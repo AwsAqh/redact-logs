@@ -37,9 +37,15 @@ jobs:
     needs: test
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    # id-token: write enables OIDC trusted publishing (no long-lived token needed).
-    # The npm CLI prefers OIDC and falls back to NODE_AUTH_TOKEN if trusted
-    # publishing is not configured for this package yet.
+    # id-token: write enables OIDC trusted publishing: npm exchanges a
+    # short-lived GitHub OIDC token for a registry token, so no long-lived
+    # NPM_TOKEN secret is needed.
+    #
+    # registry-url is deliberately NOT set. setup-node would then write an .npmrc
+    # containing "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}", and with the
+    # secret unset that placeholder is not resolved to empty -- npm leaves the
+    # literal string as the token, which every npm command in the job then reads.
+    # npm publish targets the default public registry anyway.
     permissions:
       contents: read
       id-token: write
@@ -48,11 +54,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
-      - name: Ensure npm 11.5.1+ (required for trusted publishing / OIDC)
+      - name: Ensure a trusted-publishing capable npm (>= 11.21.0 / 12.2.0)
         run: npm install --global npm@latest
       - run: npm ci
       - name: Publish
         run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
