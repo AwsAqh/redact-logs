@@ -14,8 +14,8 @@
     "access": "public"
   },
   "scripts": {
-    "test": "node --test test/**/*.test.js",
-    "test:watch": "node --test --watch test/**/*.test.js",
+    "test": "node --test",
+    "test:watch": "node --test --watch",
     "lint": "eslint src/ test/ examples/",
     "example": "node examples/server.js"
   },
