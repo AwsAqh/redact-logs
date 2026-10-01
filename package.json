@@ -1,6 +1,6 @@
 {
   "name": "@awsaqh/redact-logs",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Express middleware + core library that redacts PII and secrets from data before it reaches logs",
   "main": "src/index.js",
   "exports": {
