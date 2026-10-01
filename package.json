@@ -1,0 +1,44 @@
+{
+  "name": "@awsaqh/redact-logs",
+  "version": "0.2.0",
+  "description": "Express middleware + core library that redacts PII and secrets from data before it reaches logs",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./patterns": "./src/patterns.js"
+  },
+  "files": [
+    "src/"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node --test test/**/*.test.js",
+    "test:watch": "node --test --watch test/**/*.test.js",
+    "lint": "eslint src/ test/ examples/",
+    "example": "node examples/server.js"
+  },
+  "keywords": [
+    "pii",
+    "redaction",
+    "logging",
+    "express",
+    "middleware",
+    "security",
+    "privacy",
+    "secrets",
+    "gdpr",
+    "hipaa"
+  ],
+  "author": "awsaqh",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "express": "^4.19.2",
+    "supertest": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
