@@ -79,10 +79,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-      # Lets the step below read GitHub's OIDC subject template
-      # (GET .../actions/oidc/customization/sub) to prove which subject format
-      # this repository's tokens use. Read-only and non-fatal if refused.
-      administration: read
     steps:
       - uses: actions/setup-node@v4
         with:
@@ -112,18 +108,8 @@ jobs:
             -H "Authorization: Bearer ${ID_TOKEN}" \
             "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/@awsaqh%2Fredact-logs"
           node -e "const j=JSON.parse(require('fs').readFileSync('/tmp/exchange.json','utf8'));if(j.token){console.log('OK: the registry issued a token ('+j.token.length+' chars; value not printed)')}else{console.log('REJECTED, the registry said: '+JSON.stringify(j,null,2));process.exit(1)}"
-      - name: Read GitHub's OIDC subject template for this repository
-        env:
-          GH_TOKEN: ${{ github.token }}
-        # Corroborates the `sub` claim above: use_immutable_subject: true means every
-        # token from this repository carries the immutable subject format that the
-        # registry is reported to reject with "package not found" (npm/cli#9969).
-        # Non-fatal if GitHub refuses the request -- the claims above already tell
-        # us the format from sub itself.
-        run: |
-          curl -sS -o /tmp/subject-template.json -w 'HTTP %{http_code}\n' \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/oidc/customization/sub"
-          cat /tmp/subject-template.json
-          echo ""
+      # GitHub's OIDC subject-template endpoint (GET .../actions/oidc/customization/sub)
+      # needs an "administration" permission, which GITHUB_TOKEN cannot hold -- declaring
+      # that key in `permissions` is rejected by Actions and invalidates this whole
+      # workflow file. The `sub` claim printed above already reveals the subject format
+      # directly, so no separate probe step is needed.
