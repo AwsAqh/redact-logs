@@ -79,6 +79,10 @@ jobs:
     permissions:
       contents: read
       id-token: write
+      # Lets the step below read GitHub's OIDC subject template
+      # (GET .../actions/oidc/customization/sub) to prove which subject format
+      # this repository's tokens use. Read-only and non-fatal if refused.
+      administration: read
     steps:
       - uses: actions/setup-node@v4
         with:
@@ -98,9 +102,28 @@ jobs:
           # Print the claims only. The signature is never logged, so this output
           # cannot be replayed, and it shows exactly which repo/workflow/ref the
           # registry will compare against the trusted publisher config.
-          ID_TOKEN="$ID_TOKEN" node -e "const c=JSON.parse(Buffer.from(process.env.ID_TOKEN.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'),'base64').toString());console.log(JSON.stringify({repository:c.repository,repository_owner:c.repository_owner,workflow:c.workflow,workflow_ref:c.workflow_ref,job_workflow_ref:c.job_workflow_ref,ref:c.ref,event_name:c.event_name,environment:c.environment},null,2))"
+          # `sub` is printed too: repos created after 2026-07-15 use GitHub's
+          # immutable subject format (repo:owner@id/repo@id:ref:...) instead of the
+          # legacy repo:owner/repo:ref:..., which the registry is reported to reject
+          # with "package not found" even when every other claim matches (npm/cli#9969).
+          ID_TOKEN="$ID_TOKEN" node -e "const c=JSON.parse(Buffer.from(process.env.ID_TOKEN.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'),'base64').toString());console.log(JSON.stringify({sub:c.sub,repository:c.repository,repository_owner:c.repository_owner,repository_id:c.repository_id,repository_owner_id:c.repository_owner_id,workflow:c.workflow,workflow_ref:c.workflow_ref,job_workflow_ref:c.job_workflow_ref,ref:c.ref,event_name:c.event_name,environment:c.environment,runner_environment:c.runner_environment,iss:c.iss,aud:c.aud},null,2))"
           echo "--- registry response to the token exchange ---"
           curl -sS -o /tmp/exchange.json -w 'HTTP %{http_code}\n' -X POST \
             -H "Authorization: Bearer ${ID_TOKEN}" \
             "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/@awsaqh%2Fredact-logs"
           node -e "const j=JSON.parse(require('fs').readFileSync('/tmp/exchange.json','utf8'));if(j.token){console.log('OK: the registry issued a token ('+j.token.length+' chars; value not printed)')}else{console.log('REJECTED, the registry said: '+JSON.stringify(j,null,2));process.exit(1)}"
+      - name: Read GitHub's OIDC subject template for this repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Corroborates the `sub` claim above: use_immutable_subject: true means every
+        # token from this repository carries the immutable subject format that the
+        # registry is reported to reject with "package not found" (npm/cli#9969).
+        # Non-fatal if GitHub refuses the request -- the claims above already tell
+        # us the format from sub itself.
+        run: |
+          curl -sS -o /tmp/subject-template.json -w 'HTTP %{http_code}\n' \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/oidc/customization/sub"
+          cat /tmp/subject-template.json
+          echo ""
