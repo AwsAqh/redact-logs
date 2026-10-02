@@ -61,13 +61,14 @@ jobs:
         run: npm install --global npm@latest
       - run: npm ci
       - name: Publish
-        run: npm publish
-        # npm swallows a failed OIDC exchange and only logs the reason at
-        # verbose level, which surfaces as a bare "ENEEDAUTH ... requires you to
-        # be logged in". If this step ever fails that way again, either uncomment
-        # the next line or run the diagnose-trusted-publishing job below.
-        # env:
-        #   NPM_CONFIG_LOGLEVEL: verbose
+        run: npm publish --loglevel verbose
+        # npm only logs why an OIDC token exchange failed at verbose level
+        # (npm/cli#9923); at the default level a rejected exchange collapses into
+        # the misleading "ENEEDAUTH ... requires you to be logged in", which is
+        # what the v0.2.1 tag build showed. Verbose prints the
+        # "POST .../oidc/token/exchange/package/..." line plus the registry's own
+        # rejection message. npm never logs request headers, so the short-lived
+        # exchange token cannot end up in this log.
 
   # Read-only diagnostic for trusted publishing. It publishes nothing; it asks
   # the registry the same question `npm publish` asks internally and prints the
